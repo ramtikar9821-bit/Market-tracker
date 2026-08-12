@@ -1,0 +1,222 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Gold Price Tracker</title>
+<style>
+  :root {
+    color-scheme: dark;
+    --surface-1:      #1a1a19;
+    --page-plane:      #0d0d0d;
+    --text-primary:   #ffffff;
+    --text-secondary: #c3c2b7;
+    --text-muted:     #898781;
+    --series-1:       #3987e5;
+    --gridline:       #2c2c2a;
+    --baseline:       #383835;
+    --border:         rgba(255, 255, 255, 0.10);
+  }
+
+  * { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background: var(--page-plane);
+    color: var(--text-primary);
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    display: flex;
+    justify-content: center;
+    padding: 2.5rem 1.5rem;
+  }
+
+  .card {
+    width: 100%;
+    max-width: 900px;
+  }
+
+  h1 {
+    font-size: 1.25rem;
+    font-weight: 600;
+    margin: 0 0 1.25rem;
+    color: var(--text-primary);
+  }
+
+  .status-line {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.5rem;
+    align-items: baseline;
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1rem 1.25rem;
+    margin-bottom: 1rem;
+  }
+
+  .status-item {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+  }
+
+  .status-label {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .status-value {
+    font-size: 1.5rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    font-variant-numeric: proportional-nums;
+  }
+
+  .status-value.small {
+    font-size: 1.15rem;
+    color: var(--text-secondary);
+  }
+
+  .chart-wrap {
+    background: var(--surface-1);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 1.25rem;
+    height: 420px;
+  }
+
+  .empty-state {
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    padding: 2rem 0;
+    text-align: center;
+  }
+</style>
+</head>
+<body>
+  <div class="card">
+    <h1>Gold Price Tracker</h1>
+
+    <div class="status-line" id="statusLine">
+      <div class="status-item">
+        <span class="status-label">Latest value</span>
+        <span class="status-value" id="latestValue">&mdash;</span>
+      </div>
+      <div class="status-item">
+        <span class="status-label">Readings</span>
+        <span class="status-value small" id="readingCount">&mdash;</span>
+      </div>
+    </div>
+
+    <div class="chart-wrap">
+      <canvas id="readingsChart"></canvas>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
+  <script>
+    // Fill in the deployed Worker's origin before use, e.g. "https://gold-tracker.your-subdomain.workers.dev"
+    const WORKER_URL = "https://REPLACE_ME.workers.dev";
+
+    const rootStyles = getComputedStyle(document.documentElement);
+    const seriesColor = rootStyles.getPropertyValue('--series-1').trim();
+    const gridColor = rootStyles.getPropertyValue('--gridline').trim();
+    const baselineColor = rootStyles.getPropertyValue('--baseline').trim();
+    const mutedColor = rootStyles.getPropertyValue('--text-muted').trim();
+    const secondaryColor = rootStyles.getPropertyValue('--text-secondary').trim();
+
+    async function loadReadings() {
+      const latestValueEl = document.getElementById('latestValue');
+      const readingCountEl = document.getElementById('readingCount');
+
+      try {
+        const response = await fetch(`${WORKER_URL}/api/readings`);
+        if (!response.ok) throw new Error(`Request failed: ${response.status}`);
+        const readings = await response.json();
+
+        if (!Array.isArray(readings) || readings.length === 0) {
+          latestValueEl.textContent = 'No data';
+          readingCountEl.textContent = '0';
+          return;
+        }
+
+        const latest = readings[readings.length - 1];
+        latestValueEl.textContent = `$${Number(latest.value).toFixed(2)}`;
+        readingCountEl.textContent = readings.length.toLocaleString();
+
+        renderChart(readings);
+      } catch (err) {
+        latestValueEl.textContent = 'Error';
+        readingCountEl.textContent = '—';
+        console.error('Failed to load readings:', err);
+      }
+    }
+
+    function renderChart(readings) {
+      const labels = readings.map((r) => r.captured_at);
+      const values = readings.map((r) => r.value);
+
+      const ctx = document.getElementById('readingsChart').getContext('2d');
+      new Chart(ctx, {
+        type: 'line',
+        data: {
+          labels,
+          datasets: [
+            {
+              label: 'Gold price (per gram)',
+              data: values,
+              borderColor: seriesColor,
+              backgroundColor: seriesColor,
+              borderWidth: 2,
+              pointRadius: 3,
+              pointHoverRadius: 5,
+              pointBackgroundColor: seriesColor,
+              tension: 0.15,
+              fill: false,
+            },
+          ],
+        },
+        options: {
+          responsive: true,
+          maintainAspectRatio: false,
+          interaction: { mode: 'nearest', axis: 'x', intersect: false },
+          plugins: {
+            legend: { display: false },
+            tooltip: {
+              backgroundColor: '#1a1a19',
+              borderColor: baselineColor,
+              borderWidth: 1,
+              titleColor: '#ffffff',
+              bodyColor: secondaryColor,
+              padding: 10,
+              callbacks: {
+                label: (item) => `$${Number(item.parsed.y).toFixed(2)}`,
+              },
+            },
+          },
+          scales: {
+            x: {
+              grid: { color: gridColor },
+              ticks: { color: mutedColor, maxTicksLimit: 8 },
+              border: { color: baselineColor },
+            },
+            y: {
+              grid: { color: gridColor },
+              ticks: {
+                color: mutedColor,
+                callback: (val) => `$${val}`,
+              },
+              border: { color: baselineColor },
+            },
+          },
+        },
+      });
+    }
+
+    loadReadings();
+  </script>
+</body>
+</html>
