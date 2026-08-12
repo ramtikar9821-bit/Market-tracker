@@ -118,8 +118,10 @@
 
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4/dist/chart.umd.min.js"></script>
   <script>
-    // Fill in the deployed Worker's origin before use, e.g. "https://gold-tracker.your-subdomain.workers.dev"
-    const WORKER_URL = "https://REPLACE_ME.workers.dev";
+    // Empty string = same-origin (this page is served by the Worker itself).
+    // Set to an absolute origin, e.g. "https://gold-tracker.your-subdomain.workers.dev",
+    // only if this page is ever hosted separately from the Worker.
+    const WORKER_URL = "";
 
     const rootStyles = getComputedStyle(document.documentElement);
     const seriesColor = rootStyles.getPropertyValue('--series-1').trim();

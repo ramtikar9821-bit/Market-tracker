@@ -2,6 +2,10 @@ name = "gold-price-tracker"
 main = "worker.js"
 compatibility_date = "2026-08-12"
 
+[assets]
+directory = "./public"
+binding = "ASSETS"
+
 [[d1_databases]]
 binding = "DB"
 database_name = "gold-price-tracker-db"
