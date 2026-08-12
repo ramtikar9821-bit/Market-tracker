@@ -9,7 +9,7 @@ binding = "ASSETS"
 [[d1_databases]]
 binding = "DB"
 database_name = "gold-price-tracker-db"
-database_id = "REPLACE_ME_WITH_D1_DATABASE_ID"
+database_id = "df12a1b7-a9aa-4989-bee5-f4765d01cfca"
 
 [triggers]
 crons = ["*/15 * * * *"]
